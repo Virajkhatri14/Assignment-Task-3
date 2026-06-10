@@ -1,0 +1,44 @@
+
+import requests
+import time
+import base64
+
+TWO_CAPTCHA_API_KEY = "YOUR_API_KEY"
+
+def solve_captcha(html_or_image_bytes):
+    # 1) Extract image bytes (simplified: assume you already have bytes)
+    image_b64 = base64.b64encode(html_or_image_bytes).decode("utf-8")
+
+    # 2) Submit to 2Captcha
+    submit_url = "http://2captcha.com/in.php"
+    payload = {
+        "key": TWO_CAPTCHA_API_KEY,
+        "method": "base64",
+        "body": image_b64,
+        "json": 1,
+    }
+    r = requests.post(submit_url, data=payload)
+    request_id = r.json()["request"]
+
+    # 3) Poll for result
+    result_url = "http://2captcha.com/res.php"
+    start = time.time()
+    while True:
+        time.sleep(5)
+        res = requests.get(result_url, params={
+            "key": TWO_CAPTCHA_API_KEY,
+            "action": "get",
+            "id": request_id,
+            "json": 1
+        }).json()
+
+        if res["status"] == 1:
+            return res["request"]      # this is the solved text
+
+        if time.time() - start > 120:  # timeout
+            raise TimeoutError("CAPTCHA solving took too long")
+
+#Then your detection block becomes
+if "captcha" in response.text.lower():
+    captcha_token = solve_captcha(response.content)
+    return handle_captcha(url, captcha_token, proxy)
